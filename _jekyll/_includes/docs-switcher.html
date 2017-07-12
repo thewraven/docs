@@ -22,6 +22,8 @@
         {% assign lang = 'rb' %}
     {% when 'Java' %}
         {% assign lang = 'java' %}
+    {% when 'Go' %}
+        {% assign lang = 'go' %}
 {% endcase %}
 
 {% comment %}<!-- Generate links for this page in other languages -->{% endcomment %}
@@ -36,6 +38,9 @@
 {% endcapture %}
 {% capture java_link %}
     {% apiurltag java %}{{ page.permalink }}{% endapiurltag %}
+{% endcapture %}
+{% capture go_link %}
+    {% apiurltag go %}{{ page.permalink }}{% endapiurltag %}
 {% endcapture %}
 <nav class="lang-selector">
     <p class="caption">Language: </p>
@@ -59,6 +64,11 @@
             {% unless page.java == false %}href="{{ java_link }}"{% endunless %}>
             <i class="java"></i>
             <span {% if page.java == false %}class="disabled"{% endif %}>Java</span>
+        </a><span class="divider">|</span><!--
+        --><a class="lang go {% if lang == 'go' %} active{% endif %}"
+            {% unless page.go == false %}href="{{ go_link }}"{% endunless %}>
+            <i class="go"></i>
+            <span {% if page.go == false %}class="disabled"{% endif %}>Go</span>
         </a>
     </section>
 </nav>

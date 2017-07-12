@@ -15,6 +15,9 @@
     {% when 'Java' %}
         {% assign api = site.data.docs.api_java %}
         {% assign lang = 'java' %}
+    {% when 'Go' %}
+        {% assign lang = 'go' %}
+        {% assign api = site.data.docs.api_go %}
 {% endcase %}
 
 {% comment %}
