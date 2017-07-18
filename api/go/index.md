@@ -39,9 +39,9 @@ Connect creates a new database session. To view the available connection options
 By default InitialCap and MaxOpen are set to 1: passing values greater than the default
 (e.g. InitialCap: "10", MaxOpen: "20") will provide a pool of re-usable connections.
 
-The fields in the `r.ConnectOpts` are the connection parameters:
+The fields in the `r.ConnectOpts` are the connection parameters.
 
-- `Address : string` holds the address of the server initially used when creating the session. Only used if Addresses is empty.
+<!--- `Address : string` holds the address of the server initially used when creating the session. Only used if Addresses is empty.
 - `Addresses : []string` holds the addresses of the servers initially used when creating the session.
 - `Database : string` is the default database name used when executing queries, this value is only used if the query does not contain any DB term.
 - `Username : string` holds the username used for authentication, if blank (and the v1 handshake protocol is being used) then the admin user is used.
@@ -63,15 +63,15 @@ The fields in the `r.ConnectOpts` are the connection parameters:
  start sending queries to these new nodes.
 - `HostDecayDuration : time.Duration` is used by the go-hostpool package to calculate a weighted score when selecting a host. By default a value of 5 minutes is used.
 - `NodeRefreshInterval : time.Duration (Deprecated)` This function is no longer used due to changes in the way hosts are selected.
-- `MaxIdle : int (Deprecated)` Use InitialCap instead.
+- `MaxIdle : int (Deprecated)` Use InitialCap instead.-->
 
 If the connection cannot be established, an `error` will be returned.
 
 __Example:__ Open a connection connecting to `localhost` at port `28015` without specifying the default database.
 
-```go
+```java
 session, err := r.Connect(r.ConnectOpts{
-    Address: "locahost",
+    Address: "localhost",
     Port: 28015,
 })
 if err != nil {
@@ -81,75 +81,76 @@ if err != nil {
 
 [Read more about this command &rarr;](connect/)
 
-## [close](close/) ##
+## [Close](close/) ##
 
 {% apibody %}
-conn.close([boolean])
+session.Close(...r.CloseOpts) &rarr; error
 {% endapibody %}
 
-Close an open connection.
+Close an open session.
 
-__Example:__ Close an open connection, waiting for noreply writes to finish.
+__Example:__ Close an open session, waiting for noreply writes to finish.
 
 ```java
-conn.close();
+session.Close(r.CloseOpts{NoReplyWait: true})
 ```
 
 [Read more about this command &rarr;](close/)
 
-## [reconnect](reconnect/) ##
+## [Reconnect](reconnect/) ##
 
 {% apibody %}
-conn.reconnect([boolean, timeout])
+session.Reconnect(...r.CloseOpts) &rarr; error
 {% endapibody %}
 
-Close and reopen a connection.
+Reconnect closes and re-opens a session.
 
-__Example:__ Cancel outstanding requests/queries that are no longer needed.
+__Example:__ Reconnect without waiting for noreply writes to finish.
 
-```java
-conn.reconnect(false);
+```go
+session.Reconnect(r.CloseOpts{NoReplyWait: false})
 ```
 
 [Read more about this command &rarr;](reconnect/)
 
-## [use](use/) ##
+## [Use](use/) ##
 
 {% apibody %}
-conn.use(dbName)
+session.Use(database)
 {% endapibody %}
 
-Change the default database on this connection.
+Change the default database on this session.
 
 __Example:__ Change the default database so that we don't need to
 specify the database when referencing a table.
 
 ```java
-conn.use("marvel");
-r.table("heroes").run(conn);  // refers to r.db("marvel").table("heroes")
+session.Use("marvel")
+r.Table("heroes").Run(session) // refers to r.DB("marvel").Table("heroes")
 ```
 
 [Read more about this command &rarr;](use/)
 
-## [run](run/) ##
+## [Run](run/) ##
 
 {% apibody %}
-query.run(conn)
+term.Run(r.QueryExecutor,...r.RunOpts) &rarr; (*r.Cursor, error)
 {% endapibody %}
 
 Run a query on a connection, returning either a single JSON result or
 a cursor, depending on the query.
 
+r.QueryExecutor defines a private interface, but you will be working 
+most of the time with an *r.Session, that implements the interface
+
 __Example:__ If you are OK with potentially out of date data from all
 the tables involved in this query and want potentially faster reads,
-pass a flag allowing out of date data in an options object. Settings
+pass a flag allowing out of date data with an r.RunOpts param. Settings
 for individual tables will supercede this global setting for all
 tables in the query.
 
 ```java
-import com.rethinkdb.model.OptArgs;
-
-r.table("marvel").run(conn, OptArgs.of("read_mode", "outdated"));
+r.Table("marvel").Run(session, r.RunOpts{UseOutdated: true})
 ```
 
 [Read more about this command &rarr;](run/)
@@ -170,31 +171,45 @@ r.table("marvel").insert(document).runNoReply(conn);
 
 [Read more about this command &rarr;](run_noreply/)
 
-## [changes](changes/) ##
+## [Changes](changes/) ##
 
 {% apibody %}
-stream.changes() &rarr; stream
-singleSelection.changes() &rarr; stream
+query.Changes(opts ...r.ChangesOpts) &rarr; r.Term
 {% endapibody %}
 
-Turn a query into a changefeed, an infinite stream of objects representing changes to the query's results as they occur. A changefeed may return changes to a table or an individual document (a "point" changefeed). Commands such as `filter` or `map` may be used before the `changes` command to transform or filter the output, and many commands that operate on sequences can be chained after `changes`.
+Turn a query into a changefeed, an infinite stream of objects representing changes to the query's results as they occur. A changefeed may return changes to a table or an individual document (a "point" changefeed). Commands such as `Filter` or `Map` may be used before the `Changes` command to transform or filter the output, and many commands that operate on sequences can be chained after `Changes`.
 
 __Example:__ Subscribe to the changes on a table.
 
 Start monitoring the changefeed in one client:
 
 ```java
-Cursor changeCursor = r.table("games").changes().run(conn);
-for (Object change : changeCursor) {
-    System.out.println(change);
+changeCursor, err := r.Table("games").Changes().Run(session)
+if err != nil {
+    log.Fatalln(err)
+}
+var result interface{}
+for changeCursor.Next(&result) {
+    fmt.Println(result)
 }
 ```
 
 As these queries are performed in a second client, the first
 client would receive and print the following objects:
 
+First, let's define a `Game` struct, just to reduce verbosity.
+In fact, you can use primitive types, structs, and maps.
+
+```go
+type Game struct {
+	ID      int `gorethink:"id"`
+	Player1 string `gorethink:"player1"`
+	Player2 string `gorethink:"player2"`
+}
+```
+
 ```java
-r.table("games").insert(r.hashMap("id", 1)).run(conn);
+r.Table("games").Insert(Game{ID:1}).RunWrite(session)
 ```
 
 ```json
@@ -202,7 +217,7 @@ r.table("games").insert(r.hashMap("id", 1)).run(conn);
 ```
 
 ```java
-r.table("games").get(1).update(r.hashMap("player1", "Bob")).run(conn);
+r.Table("games").Get(1).Update(Game{Player1:"Bob"}).RunWrite(session)
 ```
 
 ```json
@@ -210,9 +225,13 @@ r.table("games").get(1).update(r.hashMap("player1", "Bob")).run(conn);
 ```
 
 ```java
-r.table("games").get(1).replace(
-    r.hashMap("id", 1).with("player1", "Bob").with("player2", "Alice")
-).run(conn);
+	game := Game{
+		ID:      1,
+		Player1: "Bob",
+		Player2: "Alice",
+	}
+	r.Table("games").Get(1).Replace(game).RunWrite(session)
+
 ```
 
 ```json
@@ -221,7 +240,7 @@ r.table("games").get(1).replace(
 ```
 
 ```java
-r.table("games").get(1).delete().run(conn);
+r.Table("games").Get(1).Delete().RunWrite(session)
 ```
 
 ```json
@@ -229,7 +248,7 @@ r.table("games").get(1).delete().run(conn);
 ```
 
 ```java
-r.tableDrop("games").run(conn);
+r.TableDrop("games").RunWrite(session)
 ```
 
 ```
