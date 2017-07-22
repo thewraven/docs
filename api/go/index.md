@@ -155,21 +155,26 @@ r.Table("marvel").Run(session, r.RunOpts{UseOutdated: true})
 
 [Read more about this command &rarr;](run/)
 
-## [runNoReply](run_noreply/) ##
+## [Exec](exec/) ##
 
 {% apibody %}
-query.runNoReply(conn)
+term.Exec(r.QueryExecutor, ...r.ExecOpts) &rarr; error
 {% endapibody %}
 
-Run a query on a connection and immediately return, without waiting for any result data to be returned by the server.
+Exec runs the query but does not return the result. Exec will still wait for the response to be received unless the `NoReply` field of `r.ExecOpts` is true.
 
-__Example:__ Send a write and return immediately.
+__Example:__ Send a query and return immediately.
 
 ```java
-r.table("marvel").insert(document).runNoReply(conn);
+err := r.Table("games").Get(1).Exec(session, r.ExecOpts{
+    NoReply: true,
+})
+if err != nil {
+    log.Fatalln(err)
+}
 ```
 
-[Read more about this command &rarr;](run_noreply/)
+[Read more about this command &rarr;](exec/)
 
 ## [Changes](changes/) ##
 
@@ -257,26 +262,29 @@ ReqlRuntimeError: Changefeed aborted (table unavailable)
 
 [Read more about this command &rarr;](changes/)
 
-## [noreplyWait](noreply_wait/) ##
+## [NoReplyWait](noreply_wait/) ##
 
 {% apibody %}
-conn.noreplyWait()
+session.NoReplyWait() &rarr; error
 {% endapibody %}
 
-Ensure that previous queries executed with [runNoReply](/api/java/run_noreply) have been processed by the server. Note that this guarantee only apples to queries run on the same connection.
+Ensure that previous queries executed with the `RunNoReply` option have been processed by the server. Note that this guarantee only apples to queries run on the same connection.
 
-__Example:__ We have previously executed queries with `runNoReply`. Now wait until the server has processed them.
+__Example:__ We have previously executed queries with `RunNoReply`. Now wait until the server has processed them.
 
 ```java
-conn.noreplyWait();
+err := session.NoReplyWait()
+if err != nil {
+    log.Fatalln(err)
+}
 ```
 
 [Read more about this command &rarr;](noreply_wait/)
 
-## [server](server/) ##
+## [Server](server/) ##
 
 {% apibody %}
-conn.server()
+session.Server() &rarr; (r.ServerResponse,error)
 {% endapibody %}
 
 Return information about the server being used by a connection.
@@ -284,36 +292,21 @@ Return information about the server being used by a connection.
 __Example:__ Return server information.
 
 ```java
-conn.server();
+info, err := session.Server()
+if err != nil {
+    log.Fatalln(err)
+}
+fmt.Println(info)
 ```
 
 ```json
 {
     "id": "404bef53-4b2c-433f-9184-bc3f7bda4a15",
     "name": "amadeus",
-    "proxy": false
 }
 ```
 
 [Read more about this command &rarr;](server/)
-
-## [optArg](optarg/) ##
-
-{% apibody %}
-term.optArg(option, value)
-{% endapibody %}
-
-Specify an optional argument to a Java ReQL term.
-
-__Example:__ Pass the `right_bound` optional argument to [between](/api/java/between/).
-
-```java
-r.table("marvel").between(10, 20).optArg("right_bound", "closed").run(conn);
-```
-
-To pass more than one optional argument, chain `optArg` once for each argument.
-
-[Read more about this command &rarr;](optarg/)
 
 {% endapisection %}
 
